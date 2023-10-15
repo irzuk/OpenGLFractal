@@ -13,12 +13,13 @@
 namespace
 {
 
-constexpr std::array<GLfloat, 15u> vertices = {
-	0.0f, 0.707f, 1.f, 0.f, 0.f,
-	-0.5f, -0.5f, 0.f, 1.f, 0.f,
-	0.5f, -0.5f, 0.f, 0.f, 1.f,
+constexpr std::array<GLfloat, 8u> vertices = {
+    -1.0f, -1.0f,
+     1.0f, -1.0f,
+     1.0f,  1.0f,
+    -1.0f,  1.0f
 };
-constexpr std::array<GLuint, 3u> indices = {0, 1, 2};
+constexpr std::array<GLuint, 6u> indices = { 0, 1, 2, 0, 2, 3 };
 
 
 
@@ -41,26 +42,23 @@ void TriangleWindow::init()
 	vbo_.create();
 	vbo_.bind();
 	vbo_.setUsagePattern(QOpenGLBuffer::StaticDraw);
-	vbo_.allocate(vertices.data(), static_cast<int>(vertices.size() * sizeof(GLfloat)));
+	vbo_.allocate(vertices.data(), static_cast<int>(vertices.size() * sizeof(vertices[0])));
 
 	// Create IBO
 	ibo_.create();
 	ibo_.bind();
 	ibo_.setUsagePattern(QOpenGLBuffer::StaticDraw);
-	ibo_.allocate(indices.data(), static_cast<int>(indices.size() * sizeof(GLuint)));
+	ibo_.allocate(indices.data(), static_cast<int>(indices.size() * sizeof(indices[0])));
 
 	// Bind attributes
 	program_->bind();
 
 	program_->enableAttributeArray(0);
-	program_->setAttributeBuffer(0, GL_FLOAT, 0, 2, static_cast<int>(5 * sizeof(GLfloat)));
-
-	program_->enableAttributeArray(1);
-	program_->setAttributeBuffer(1, GL_FLOAT, static_cast<int>(2 * sizeof(GLfloat)), 3,
-								 static_cast<int>(5 * sizeof(GLfloat)));
+	program_->setAttributeBuffer(0, GL_FLOAT, 0, 2, static_cast<int>(2 * sizeof(GLfloat)));
 
 	resolutionUniform_ = program_->uniformLocation("resolution");
 	settingsUniform_ = program_->uniformLocation("settings");
+	colorUniform_ = program_->uniformLocation("color");
 
 	// Release all
 	program_->release();
@@ -94,24 +92,22 @@ void TriangleWindow::render()
 	// Clear buffers
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// const auto angle = 100.0 * static_cast<double>(frame_) / screen()->refreshRate();
-	// matrix.rotate(static_cast<float>(angle), rotationAxis_);
-
 	// Bind VAO and shader program
 	program_->bind();
 	vao_.bind();
 
 	// Update uniform value
-	// std::cout << mousePosition_.x() << ", " << mousePosition_.y() << std::endl;
-    // std::cout << "zoom: " << zoom_ << std::endl;
-    QVector3D v = QVector3D(mousePosition_, zoom_ * 0.5);
-	// program_->use();
+    QVector3D v = QVector3D(diff.x(), diff.y(), zoom_);
 	program_->setUniformValue(resolutionUniform_, v);
+	settings_.setX(background->red() / (float)255);
+	settings_.setY(background->green() / (float)255);
+	settings_.setZ(background->blue() / (float)255);
+	settings_.setW(iterations->value());
 	program_->setUniformValue(settingsUniform_, settings_);
-	settings_.setX(settings_.x() - 1);
+	program_->setUniformValue(colorUniform_, QVector3D(frac->red(), frac->green(), frac->blue()) / (float)255);
 
 	// Draw
-	glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 	// Release VAO and shader program
 	vao_.release();
@@ -128,16 +124,24 @@ void TriangleWindow::render()
 
 void TriangleWindow::mousePressEvent(QMouseEvent * e)
 {
-	mousePressPosition_ = QVector2D(e->localPos());
-	std::cout << "Mouse pressed" << "\n";
+	mousePrevPosition_ = QVector2D(e->windowPos());
+	isMoving_ = true;
 }
 
 void TriangleWindow::mouseReleaseEvent(QMouseEvent * e)
 {
-	// const auto diff = QVector2D(e->localPos()) - mousePressPosition_;
-	mousePosition_ = QVector2D(e->localPos());
-	std::cout << "Mouse current pos, y: " << mousePosition_.y() << ", x: " << mousePosition_.x() << "\n";
-	// rotationAxis_ = QVector3D(diff.y(), diff.x(), 0.0).normalized();
+    (void)e;
+	isMoving_ = false;
+}
+
+void TriangleWindow::mouseMoveEvent(QMouseEvent * e)
+{
+	if (isMoving_) {
+		mousePosition_ = QVector2D(e->windowPos());
+		auto localDiff = mousePosition_ - mousePrevPosition_;
+		diff += QVector2D(-localDiff.x() / (this->width() / 2), localDiff.y() / (this->height() / 2));
+		mousePrevPosition_ = mousePosition_;
+	}
 }
 
 void TriangleWindow::wheelEvent(QWheelEvent *event) {
@@ -145,14 +149,18 @@ void TriangleWindow::wheelEvent(QWheelEvent *event) {
     QPoint numDegrees = event->angleDelta() / 8;
 
     if (!numPixels.isNull()) {
-        //scrollWithPixels(numPixels);
 		float y = numPixels.y();
-		//std::cout << "pixels: x: " << numPixels.x() << ", y: " << y << std::endl;
-		zoom_ += y / 10;
+		zoom_ += y / 1000;
+		// std::cout << zoom_ << std::endl;
+		auto pos = QVector2D(event->pos()) - QVector2D(this->width() / 2, this->height() / 2);
+		auto realPos = QVector2D(pos.x() / (this->width() / 2), pos.y() / (this->height() / 2));
+		const float c = 2.2;
+		auto d = QVector2D ((-realPos.x()) / c * (y / 1000) + (1/2 * (y / 1000)), (realPos.y()) / c * (y / 1000) - (1/2 * (y / 1000)));
+		// std::cout << "x: " << d.x() << ", localDiff: " << d.y() << std::endl;
+		diff += d;
     } else if (!numDegrees.isNull()) {
-        // QPoint numSteps = numDegrees / 15;
 		std::cout << "degrees:  x: " << numDegrees.x() << ", y: " << numDegrees.y() << std::endl;
-        // scrollWithDegrees(numSteps);
+		// throw std::exception("wheel event by degrees is not implemented");
     }
     event->accept();
 }
@@ -162,7 +170,6 @@ double TriangleWindow::countFPS()
 {
     double current_time = QTime::currentTime().second();
 	double fps = (frame_ - last_counted_frame) / (current_time - last_time);
-	// std::cout << "updated frame counter: " << frame_ << " , old_frame_counter: " << last_counted_frame << std::endl;
 	last_counted_frame = frame_;
     last_time = current_time;
 	return fps;
@@ -170,17 +177,5 @@ double TriangleWindow::countFPS()
 
 void TriangleWindow::timerEvent(QTimerEvent *)
 {
-    // Decrease angular speed (friction)
-    // angularSpeed *= 0.99;
-
-    // // Stop rotation when speed goes below threshold
-    // if (angularSpeed < 0.01) {
-    //     angularSpeed = 0.0;
-    // } else {
-    //     // Update rotation
-    //     rotation = QQuaternion::fromAxisAndAngle(rotationAxis, angularSpeed) * rotation;
-
-        // Request an update
-        render();
-    //}
+    renderNow();
 }

@@ -25,12 +25,14 @@ public:
 protected:
 	void mousePressEvent(QMouseEvent * e) override;
 	void mouseReleaseEvent(QMouseEvent * e) override;
+	void mouseMoveEvent(QMouseEvent * e) override;
 	void wheelEvent(QWheelEvent *ev) override;
 	void timerEvent(QTimerEvent *) override;
 
 private:
 	GLint resolutionUniform_ = -1;
 	GLint settingsUniform_ = -1;
+	GLint colorUniform_ = -1;
 
 	QOpenGLBuffer vbo_{QOpenGLBuffer::Type::VertexBuffer};
 	QOpenGLBuffer ibo_{QOpenGLBuffer::Type::IndexBuffer};
@@ -39,18 +41,29 @@ private:
 	std::unique_ptr<QOpenGLShaderProgram> program_ = nullptr;
 
 	size_t frame_ = 0;
-	QVector2D mousePressPosition_{0., 0.};
 
-    double zoom_ = 1.2;
+    double zoom_ = 0.5;
+	QVector2D diff{0., 0.};
+	bool isMoving_ = false;
+	QVector2D mousePrevPosition_{0., 0.};
 	QVector2D mousePosition_{0., 0.};
-	QVector3D settings_{100., 0., 0.};
+	QVector4D settings_{0., 1., 0., 0.}; // color.xyz, iterations
 
 	size_t last_counted_frame = 0;
 	double last_time = 0;
 	double countFPS();
 	QBasicTimer timer;
 
-	QSlider iterations;
+	QSlider* iterations;
+	QColor* background;
+	QColor* frac;
+public:
+    void setSliders(QSlider* iters) {
+		iterations = iters;
+	}
 
-	// settings
+	void setColors(QColor* frac_, QColor* background_) {
+		background = background_;
+        frac = frac_;
+	}
 };
