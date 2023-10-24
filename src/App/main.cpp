@@ -29,14 +29,14 @@ int main(int argc, char ** argv)
 
 	TriangleWindow window;
 	window.setFormat(format);
-	window.resize(640, 480);
+	window.resize(640, 640);
 	
     auto m = new QDialog();
 	m->resize(150,70);
 	auto sliderIteration = new QSlider(Qt::Horizontal);
-    sliderIteration->setRange(0, 200);
-	sliderIteration->setValue(20);
-	QObject::connect(sliderIteration, SIGNAL(valueChanged(int)),sliderIteration, SLOT(setValue(int)));
+    sliderIteration->setRange(0, 500);
+	sliderIteration->setValue(200);
+	QObject::connect(sliderIteration, SIGNAL(valueChanged(int)), sliderIteration, SLOT(setValue(int)));
 	QHBoxLayout *layout = new QHBoxLayout;
     layout->addWidget(sliderIteration);
     m->setLayout(layout);

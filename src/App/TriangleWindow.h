@@ -42,12 +42,14 @@ private:
 
 	size_t frame_ = 0;
 
-    double zoom_ = 0.5;
+    double zoom_ = 1;
 	QVector2D diff{0., 0.};
 	bool isMoving_ = false;
 	QVector2D mousePrevPosition_{0., 0.};
 	QVector2D mousePosition_{0., 0.};
 	QVector4D settings_{0., 1., 0., 0.}; // color.xyz, iterations
+	QVector2D getGLCoords(QVector2D vec);
+	QVector2D getDiff(QVector2D a, QVector2D b);
 
 	size_t last_counted_frame = 0;
 	double last_time = 0;

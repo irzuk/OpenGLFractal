@@ -21,8 +21,6 @@ constexpr std::array<GLfloat, 8u> vertices = {
 };
 constexpr std::array<GLuint, 6u> indices = { 0, 1, 2, 0, 2, 3 };
 
-
-
 }// namespace
 
 void TriangleWindow::init()
@@ -138,8 +136,8 @@ void TriangleWindow::mouseMoveEvent(QMouseEvent * e)
 {
 	if (isMoving_) {
 		mousePosition_ = QVector2D(e->windowPos());
-		auto localDiff = mousePosition_ - mousePrevPosition_;
-		diff += QVector2D(-localDiff.x() / (this->width() / 2), localDiff.y() / (this->height() / 2));
+		auto localDiff = getDiff( mousePosition_, mousePrevPosition_);
+		diff += localDiff;
 		mousePrevPosition_ = mousePosition_;
 	}
 }
@@ -150,21 +148,16 @@ void TriangleWindow::wheelEvent(QWheelEvent *event) {
 
     if (!numPixels.isNull()) {
 		float y = numPixels.y();
-		zoom_ += y / 1000;
-		// std::cout << zoom_ << std::endl;
-		auto pos = QVector2D(event->pos()) - QVector2D(this->width() / 2, this->height() / 2);
-		auto realPos = QVector2D(pos.x() / (this->width() / 2), pos.y() / (this->height() / 2));
-		const float c = 2.2;
-		auto d = QVector2D ((-realPos.x()) / c * (y / 1000) + (1/2 * (y / 1000)), (realPos.y()) / c * (y / 1000) - (1/2 * (y / 1000)));
-		// std::cout << "x: " << d.x() << ", localDiff: " << d.y() << std::endl;
-		diff += d;
+		double a = y / 1000;
+		zoom_ += a;
+		auto currPos = getGLCoords(QVector2D(event->position()));
+		diff = (diff - currPos) / (zoom_) * (zoom_ - a) + currPos;
     } else if (!numDegrees.isNull()) {
 		std::cout << "degrees:  x: " << numDegrees.x() << ", y: " << numDegrees.y() << std::endl;
 		// throw std::exception("wheel event by degrees is not implemented");
     }
     event->accept();
 }
-// mouseMoveEvent(QMouseEvent *ev)
 
 double TriangleWindow::countFPS()
 {
@@ -178,4 +171,15 @@ double TriangleWindow::countFPS()
 void TriangleWindow::timerEvent(QTimerEvent *)
 {
     renderNow();
+}
+
+
+QVector2D TriangleWindow::getGLCoords(QVector2D vec) {
+    auto pos = 2 * vec / QVector2D(width(), height()) - QVector2D(1, 1);
+    pos.setY(-pos.y());
+	return pos;
+}
+
+QVector2D TriangleWindow::getDiff(QVector2D a, QVector2D b) {
+    return getGLCoords(a) - getGLCoords(b);
 }

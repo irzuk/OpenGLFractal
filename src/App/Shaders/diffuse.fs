@@ -1,5 +1,6 @@
 #version 330 core
 
+in vec2 position;
 uniform vec3 resolution;
 uniform vec4 settings;
 uniform vec3 color;
@@ -12,12 +13,11 @@ int get_iterations()
     float center_x = resolution.x;
     float center_y = resolution.y;
 
-    float real = ((gl_FragCoord.x / 1080.0 - 0.5) * zoom + center_x) * 5.0;
-    float imag = ((gl_FragCoord.y / 1080.0 - 0.5) * zoom + center_y) * 5.0;
- 
     int iterations = 0;
-    float const_real = real;
-    float const_imag = imag;
+    float const_real = (position.x - center_x) * zoom;
+    float const_imag = (position.y - center_y) * zoom;
+    float real = 0;
+    float imag = 0;
  
     while (iterations < settings.w)
     {
